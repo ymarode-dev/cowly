@@ -1,0 +1,140 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: cowly
+      POSTGRES_PASSWORD: cowly
+      POSTGRES_DB: cowly
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cowly -d cowly"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      COWLY_GATEWAY_AUTH_SERVICE_URL: http://auth-service:8102
+      COWLY_GATEWAY_HERD_SERVICE_URL: http://herd-service:8103
+      COWLY_GATEWAY_COLLAR_REGISTRY_URL: http://collar-registry:8104
+      COWLY_GATEWAY_COLLAR_SIMULATOR_URL: http://collar-simulator:8101
+      COWLY_GATEWAY_TELEMETRY_SERVICE_URL: http://telemetry-service:8105
+      COWLY_GATEWAY_ALERT_SERVICE_URL: http://alert-service:8106
+      COWLY_GATEWAY_NOTIFICATION_SERVICE_URL: http://notification-service:8107
+      COWLY_GATEWAY_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      auth-service:
+        condition: service_started
+      herd-service:
+        condition: service_started
+      collar-registry:
+        condition: service_started
+      collar-simulator:
+        condition: service_started
+      telemetry-service:
+        condition: service_started
+      alert-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8102:8102"
+    environment:
+      COWLY_AUTH_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+      COWLY_AUTH_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  herd-service:
+    build: ./herd-service
+    ports:
+      - "8103:8103"
+    environment:
+      COWLY_HERD_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_herd
+      COWLY_HERD_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  collar-registry:
+    build: ./collar-registry
+    ports:
+      - "8104:8104"
+    environment:
+      COWLY_COLLAR_REGISTRY_COLLAR_SIMULATOR_URL: http://collar-simulator:8101
+      COWLY_COLLAR_REGISTRY_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_collar
+      COWLY_COLLAR_REGISTRY_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      collar-simulator:
+        condition: service_started
+
+  collar-simulator:
+    build: ./collar-simulator
+    ports:
+      - "8101:8101"
+    environment:
+      COWLY_COLLAR_SIM_HERD_SIZE: ${COWLY_COLLAR_SIM_HERD_SIZE:-100}
+
+  telemetry-service:
+    build: ./telemetry-service
+    ports:
+      - "8105:8105"
+    environment:
+      COWLY_TELEMETRY_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_telemetry
+      COWLY_TELEMETRY_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  alert-service:
+    build: ./alert-service
+    ports:
+      - "8106:8106"
+    environment:
+      COWLY_ALERT_NOTIFICATION_SERVICE_URL: http://notification-service:8107
+      COWLY_ALERT_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_alerts
+      COWLY_ALERT_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+      COWLY_ALERT_INTERNAL_API_KEY: ${COWLY_INTERNAL_API_KEY:-cowly-internal-dev-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8107:8107"
+    environment:
+      COWLY_NOTIFICATION_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_notifications
+      COWLY_NOTIFICATION_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+      COWLY_NOTIFICATION_INTERNAL_API_KEY: ${COWLY_INTERNAL_API_KEY:-cowly-internal-dev-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
