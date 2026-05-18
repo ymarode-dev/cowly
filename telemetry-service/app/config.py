@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     db_echo: bool = False
     jwt_secret: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"
+    alert_service_url: str = "http://alert-service:8106"
+    internal_api_key: str = "cowly-internal-dev-key"
 
 
 settings = Settings()

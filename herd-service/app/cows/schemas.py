@@ -23,6 +23,7 @@ class CowUpdate(BaseModel):
 
 class CowResponse(CowCreate):
     id: str
+    farm_id: str
     collar_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime

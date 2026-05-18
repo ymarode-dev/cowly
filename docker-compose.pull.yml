@@ -1,0 +1,300 @@
+# Run Cowly from pre-built images only (no local source build required).
+#
+#   cp .env.example .env   # edit COWLY_IMAGE_REGISTRY and COWLY_VERSION
+#   docker compose -f docker-compose.pull.yml pull
+#   docker compose -f docker-compose.pull.yml up -d
+#
+# Images default to cowly/<service>:<version> on your configured registry.
+
+x-cowly-logging: &cowly-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-cowly-app-env: &cowly-app-env
+  COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-info}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cowly
+      POSTGRES_PASSWORD: cowly
+      POSTGRES_DB: cowly
+    ports:
+      - "${COWLY_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cowly -d cowly"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging: *cowly-logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${COWLY_REDIS_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    logging: *cowly-logging
+
+  api-gateway:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/api-gateway:${COWLY_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${COWLY_GATEWAY_PORT:-8000}:8000"
+    environment:
+      <<: *cowly-app-env
+      COWLY_VERSION: ${COWLY_VERSION:-0.1.0}
+      COWLY_BUILD_TIMESTAMP: ${COWLY_BUILD_TIMESTAMP:-unknown}
+      COWLY_VCS_REF: ${COWLY_VCS_REF:-unknown}
+      COWLY_GATEWAY_AUTH_SERVICE_URL: http://auth-service:8102
+      COWLY_GATEWAY_HERD_SERVICE_URL: http://herd-service:8103
+      COWLY_GATEWAY_COLLAR_REGISTRY_URL: http://collar-registry:8104
+      COWLY_GATEWAY_COLLAR_SIMULATOR_URL: http://collar-simulator:8101
+      COWLY_GATEWAY_TELEMETRY_SERVICE_URL: http://telemetry-service:8105
+      COWLY_GATEWAY_ALERT_SERVICE_URL: http://alert-service:8106
+      COWLY_GATEWAY_NOTIFICATION_SERVICE_URL: http://notification-service:8107
+      COWLY_GATEWAY_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+      COWLY_GATEWAY_CORS_ORIGINS: ${COWLY_GATEWAY_CORS_ORIGINS:-*}
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      herd-service:
+        condition: service_healthy
+      collar-registry:
+        condition: service_healthy
+      collar-simulator:
+        condition: service_healthy
+      telemetry-service:
+        condition: service_healthy
+      alert-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    logging: *cowly-logging
+
+  auth-service:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/auth-service:${COWLY_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${COWLY_AUTH_PORT:-8102}:8102"
+    environment:
+      <<: *cowly-app-env
+      COWLY_AUTH_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+      COWLY_AUTH_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8102/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+    logging: *cowly-logging
+
+  herd-service:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/herd-service:${COWLY_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${COWLY_HERD_PORT:-8103}:8103"
+    environment:
+      <<: *cowly-app-env
+      COWLY_HERD_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_herd
+      COWLY_HERD_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8103/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+    logging: *cowly-logging
+
+  collar-registry:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/collar-registry:${COWLY_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${COWLY_COLLAR_REGISTRY_PORT:-8104}:8104"
+    environment:
+      <<: *cowly-app-env
+      COWLY_COLLAR_REGISTRY_COLLAR_SIMULATOR_URL: http://collar-simulator:8101
+      COWLY_COLLAR_REGISTRY_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_collar
+      COWLY_COLLAR_REGISTRY_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      collar-simulator:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8104/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+    logging: *cowly-logging
+
+  collar-simulator:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/collar-simulator:${COWLY_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${COWLY_SIMULATOR_PORT:-8101}:8101"
+    environment:
+      <<: *cowly-app-env
+      COWLY_COLLAR_SIM_HERD_SIZE: ${COWLY_COLLAR_SIM_HERD_SIZE:-100}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8101/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
+    logging: *cowly-logging
+
+  telemetry-service:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/telemetry-service:${COWLY_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${COWLY_TELEMETRY_PORT:-8105}:8105"
+    environment:
+      <<: *cowly-app-env
+      COWLY_TELEMETRY_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_telemetry
+      COWLY_TELEMETRY_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8105/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+    logging: *cowly-logging
+
+  alert-service:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/alert-service:${COWLY_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${COWLY_ALERT_PORT:-8106}:8106"
+    environment:
+      <<: *cowly-app-env
+      COWLY_ALERT_NOTIFICATION_SERVICE_URL: http://notification-service:8107
+      COWLY_ALERT_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_alerts
+      COWLY_ALERT_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+      COWLY_ALERT_INTERNAL_API_KEY: ${COWLY_INTERNAL_API_KEY:-cowly-internal-dev-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8106/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+    logging: *cowly-logging
+
+  notification-service:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/notification-service:${COWLY_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${COWLY_NOTIFICATION_PORT:-8107}:8107"
+    environment:
+      <<: *cowly-app-env
+      COWLY_NOTIFICATION_DATABASE_URL: postgresql+psycopg2://cowly:cowly@postgres:5432/cowly_notifications
+      COWLY_NOTIFICATION_JWT_SECRET: ${COWLY_AUTH_JWT_SECRET:-dev-secret-change-in-production}
+      COWLY_NOTIFICATION_INTERNAL_API_KEY: ${COWLY_INTERNAL_API_KEY:-cowly-internal-dev-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8107/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+    logging: *cowly-logging
+
+  cowly-seed:
+    image: ${COWLY_IMAGE_REGISTRY:-cowly}/seed-service:${COWLY_VERSION:-0.1.0}
+    profiles:
+      - seed
+    restart: "no"
+    environment:
+      COWLY_SEED_GATEWAY_URL: http://api-gateway:8000
+      COWLY_SEED_EMAIL: ${COWLY_SEED_EMAIL:-demo@cowly.local}
+      COWLY_SEED_PASSWORD: ${COWLY_SEED_PASSWORD:-demo-password-1}
+      COWLY_SEED_FARM_NAME: ${COWLY_SEED_FARM_NAME:-Demo Farm}
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    logging: *cowly-logging
+
+volumes:
+  postgres_data:

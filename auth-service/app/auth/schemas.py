@@ -13,6 +13,7 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: str
     email: EmailStr
+    farm_id: str
     farm_name: str
     created_at: datetime
 
@@ -24,11 +25,17 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     expires_in_minutes: int
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 class VerifyResponse(BaseModel):
     valid: bool
     user_id: Optional[str] = None
     email: Optional[EmailStr] = None
+    farm_id: Optional[str] = None

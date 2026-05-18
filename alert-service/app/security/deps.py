@@ -1,4 +1,10 @@
-from fastapi import Depends, HTTPException
+from __future__ import annotations
+
+
+
+import secrets
+
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -10,12 +16,21 @@ security = HTTPBearer(auto_error=False)
 
 class CurrentUser(BaseModel):
     user_id: str
+    farm_id: str
     email: str | None = None
+    internal: bool = False
 
 
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> CurrentUser:
+    internal_key = request.headers.get("X-Internal-Api-Key")
+    if internal_key and secrets.compare_digest(
+        internal_key, settings.internal_api_key
+    ):
+        return CurrentUser(user_id="internal", farm_id="", internal=True)
+
     if not credentials:
         raise HTTPException(
             status_code=401,
@@ -35,6 +50,19 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
     user_id = payload.get("sub")
-    if not user_id:
+    farm_id = payload.get("farm_id")
+    if not user_id or not farm_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
-    return CurrentUser(user_id=str(user_id), email=payload.get("email"))
+    if payload.get("type") not in (None, "access"):
+        raise HTTPException(status_code=401, detail="Invalid token type")
+    return CurrentUser(
+        user_id=str(user_id),
+        farm_id=str(farm_id),
+        email=payload.get("email"),
+    )
+
+
+def require_internal(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    if not user.internal:
+        raise HTTPException(status_code=403, detail="Internal API only")
+    return user

@@ -1,0 +1,24 @@
+# Test overrides — use with docker-compose.yml
+#
+# Unit tests (per service, Python 3.11 in each image):
+#   ./scripts/run_all_tests.sh
+#
+# Integration tests (stack started automatically if needed):
+#   RUN_INTEGRATION=1 ./scripts/run_all_tests.sh
+#   make test-integration
+
+services:
+  test-integration:
+    build:
+      context: .
+      dockerfile: docker/test-runner/Dockerfile
+    profiles:
+      - test
+    environment:
+      COWLY_GATEWAY_URL: http://api-gateway:8000
+      COWLY_TEST_TIMEOUT: "30"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    networks:
+      - default

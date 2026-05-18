@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 import httpx
 from fastapi import APIRouter
 

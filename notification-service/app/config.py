@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"
     internal_api_key: str = "cowly-internal-dev-key"
+    smtp_enabled: bool = False
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+    smtp_use_tls: bool = False
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "cowly@localhost"
 
 
 settings = Settings()

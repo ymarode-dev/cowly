@@ -1,8 +1,12 @@
+from __future__ import annotations
+
+
 from collections.abc import Generator
 
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.alerts.models import Alert  # noqa: F401
+from app.geofences.models import Geofence  # noqa: F401
 from app.config import settings
 
 engine = create_engine(settings.database_url, echo=settings.db_echo, pool_pre_ping=True)

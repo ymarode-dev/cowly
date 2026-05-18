@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 from collections.abc import Callable
 
 from fastapi import Request, Response
@@ -9,6 +12,7 @@ from app.auth.jwt import decode_access_token
 PUBLIC_METHOD_PATHS = {
     ("POST", "/api/v1/auth/register"),
     ("POST", "/api/v1/auth/login"),
+    ("POST", "/api/v1/auth/refresh"),
 }
 
 PUBLIC_PATH_PREFIXES = (
@@ -68,4 +72,5 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         request.state.user_id = user.user_id
         request.state.user_email = user.email
+        request.state.farm_id = user.farm_id
         return await call_next(request)

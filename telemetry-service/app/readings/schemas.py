@@ -16,4 +16,5 @@ class TelemetryIngest(BaseModel):
 
 class TelemetryReadingResponse(TelemetryIngest):
     id: str
+    farm_id: str
     recorded_at: datetime

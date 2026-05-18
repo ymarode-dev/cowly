@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+
+
 from app.models import CowBase
 from app.store import CowRecord, _utcnow, store
 

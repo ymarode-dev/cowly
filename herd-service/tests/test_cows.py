@@ -12,6 +12,7 @@ def test_cow_crud(client) -> None:
     cow = create.json()
     cow_id = cow["id"]
     assert cow["name"] == "Bessie"
+    assert cow["farm_id"] == "test-farm-id"
     assert cow["collar_id"] is None
 
     dup = client.post(

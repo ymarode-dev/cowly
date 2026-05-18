@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 from collections.abc import Generator
 
 from sqlmodel import Session, SQLModel, create_engine

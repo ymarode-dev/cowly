@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +18,16 @@ class Settings(BaseSettings):
     notification_service_url: str = "http://notification-service:8107"
     jwt_secret: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"
+    cors_origins: str = "*"
+    redis_url: str = "redis://localhost:6380/0"
+    redis_enabled: bool = True
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        raw = self.cors_origins.strip()
+        if raw == "*":
+            return ["*"]
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
 settings = Settings()

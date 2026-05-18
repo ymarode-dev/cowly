@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,11 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.cows.routes import router as cows_router
 from app.database import init_db
+from app.migrate import run_migrations
 from app.health.routes import router as health_router
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    if os.getenv("COWLY_SKIP_MIGRATIONS") != "1":
+        run_migrations()
     init_db()
     yield
 
