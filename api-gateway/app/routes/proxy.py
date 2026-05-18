@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 import httpx
 from fastapi import APIRouter, Request, Response
 
@@ -11,6 +14,7 @@ ROUTE_MAP: dict[str, tuple[str, str]] = {
     "collars": (settings.collar_registry_url, "/api/v1/collars"),
     "telemetry": (settings.telemetry_service_url, "/api/v1/telemetry"),
     "alerts": (settings.alert_service_url, "/api/v1/alerts"),
+    "geofences": (settings.alert_service_url, "/api/v1/geofences"),
     "notifications": (settings.notification_service_url, "/api/v1/notifications"),
     "simulator": (settings.collar_simulator_url, "/api/v1"),
 }
@@ -40,6 +44,9 @@ async def _forward(
         user_email = getattr(request.state, "user_email", None)
         if user_email:
             headers["X-User-Email"] = user_email
+        farm_id = getattr(request.state, "farm_id", None)
+        if farm_id:
+            headers["X-Farm-Id"] = farm_id
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         upstream = await client.request(

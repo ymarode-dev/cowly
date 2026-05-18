@@ -7,6 +7,7 @@ def test_collar_lifecycle(client) -> None:
     collar = register.json()
     collar_id = collar["id"]
     assert collar["status"] == "available"
+    assert collar["farm_id"] == "test-farm-id"
     assert collar["mac_address"] == "AA:BB:CC:DD:EE:01"
 
     dup = client.post(

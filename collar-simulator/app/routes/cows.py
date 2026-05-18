@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import List
+
 from fastapi import APIRouter, HTTPException, Query
 
 from app.mappers import cow_to_response
@@ -7,7 +11,7 @@ from app.store import store
 router = APIRouter(prefix="/cows", tags=["cows"])
 
 
-@router.get("", response_model=list[CowResponse])
+@router.get("", response_model=List[CowResponse])
 async def list_cows(
     unassigned_only: bool = Query(
         default=False,

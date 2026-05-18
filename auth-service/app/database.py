@@ -1,8 +1,11 @@
+from __future__ import annotations
+
+
 from collections.abc import Generator
 
 from sqlmodel import Session, SQLModel, create_engine
 
-from app.auth.models import User  # noqa: F401
+from app.auth.models import Farm, User  # noqa: F401
 from app.config import settings
 
 engine = create_engine(settings.database_url, echo=settings.db_echo, pool_pre_ping=True)

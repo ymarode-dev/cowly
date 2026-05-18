@@ -1,4 +1,13 @@
+import respx
+from httpx import Response
+
+
+@respx.mock
 def test_ingest_and_latest(client) -> None:
+    respx.post("http://alert.test/api/v1/internal/evaluate").mock(
+        return_value=Response(200, json=[])
+    )
+
     ingest = client.post(
         "/api/v1/telemetry/readings",
         json={
@@ -12,6 +21,8 @@ def test_ingest_and_latest(client) -> None:
     )
     assert ingest.status_code == 201
     assert ingest.json()["collar_id"] == "collar-1"
+    assert ingest.json()["farm_id"] == "test-farm-id"
+    assert respx.calls.call_count == 1
 
     client.post(
         "/api/v1/telemetry/readings",

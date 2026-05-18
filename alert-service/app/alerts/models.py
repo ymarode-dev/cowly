@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
@@ -31,6 +34,7 @@ class Alert(SQLModel, table=True):
         primary_key=True,
         max_length=36,
     )
+    farm_id: str = Field(index=True, max_length=36)
     cow_id: str | None = Field(default=None, max_length=36)
     collar_id: str = Field(index=True, max_length=36)
     alert_type: AlertType
@@ -38,4 +42,6 @@ class Alert(SQLModel, table=True):
     message: str
     metadata_json: dict = Field(default_factory=dict, sa_column=Column("metadata", JSON))
     acknowledged: bool = Field(default=False)
+    acknowledged_by: str | None = Field(default=None, max_length=36)
+    acknowledged_at: datetime | None = None
     created_at: datetime = Field(default_factory=_utcnow, index=True)

@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import List
+
 from fastapi import APIRouter, HTTPException, Query
 
 from app.config import settings
@@ -24,7 +28,7 @@ async def scan_for_collars() -> ScanResponse:
     return ScanResponse(scanned_at=_utcnow(), collars=collars)
 
 
-@router.get("", response_model=list[CollarResponse])
+@router.get("", response_model=List[CollarResponse])
 async def list_collars(
     assigned: bool | None = Query(default=None, description="Filter by assignment state"),
 ) -> list[CollarResponse]:

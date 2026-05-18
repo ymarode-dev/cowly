@@ -13,6 +13,7 @@ class CollarRegister(BaseModel):
 
 class CollarResponse(BaseModel):
     id: str
+    farm_id: str
     mac_address: str
     status: CollarStatus
     cow_id: Optional[str] = None

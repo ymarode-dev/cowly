@@ -1,0 +1,93 @@
+# Development overrides — live code sync and debug logging.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml watch
+
+services:
+  api-gateway:
+    environment:
+      COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-debug}
+    develop:
+      watch:
+        - action: sync
+          path: ./api-gateway/app
+          target: /app/app
+        - action: rebuild
+          path: ./api-gateway/requirements.txt
+
+  auth-service:
+    environment:
+      COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-debug}
+    develop:
+      watch:
+        - action: sync
+          path: ./auth-service/app
+          target: /app/app
+        - action: rebuild
+          path: ./auth-service/requirements.txt
+
+  herd-service:
+    environment:
+      COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-debug}
+    develop:
+      watch:
+        - action: sync
+          path: ./herd-service/app
+          target: /app/app
+        - action: rebuild
+          path: ./herd-service/requirements.txt
+
+  collar-registry:
+    environment:
+      COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-debug}
+    develop:
+      watch:
+        - action: sync
+          path: ./collar-registry/app
+          target: /app/app
+        - action: rebuild
+          path: ./collar-registry/requirements.txt
+
+  collar-simulator:
+    environment:
+      COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-debug}
+    develop:
+      watch:
+        - action: sync
+          path: ./collar-simulator/app
+          target: /app/app
+        - action: rebuild
+          path: ./collar-simulator/requirements.txt
+
+  telemetry-service:
+    environment:
+      COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-debug}
+    develop:
+      watch:
+        - action: sync
+          path: ./telemetry-service/app
+          target: /app/app
+        - action: rebuild
+          path: ./telemetry-service/requirements.txt
+
+  alert-service:
+    environment:
+      COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-debug}
+    develop:
+      watch:
+        - action: sync
+          path: ./alert-service/app
+          target: /app/app
+        - action: rebuild
+          path: ./alert-service/requirements.txt
+
+  notification-service:
+    environment:
+      COWLY_LOG_LEVEL: ${COWLY_LOG_LEVEL:-debug}
+    develop:
+      watch:
+        - action: sync
+          path: ./notification-service/app
+          target: /app/app
+        - action: rebuild
+          path: ./notification-service/requirements.txt

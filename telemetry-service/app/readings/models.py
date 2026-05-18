@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 import uuid
 from datetime import datetime, timezone
 
@@ -16,6 +19,7 @@ class TelemetryReading(SQLModel, table=True):
         primary_key=True,
         max_length=36,
     )
+    farm_id: str = Field(index=True, max_length=36)
     collar_id: str = Field(index=True, max_length=36)
     cow_id: str | None = Field(default=None, max_length=36)
     latitude: float

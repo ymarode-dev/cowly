@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
@@ -30,12 +35,33 @@ def login(
         user = service.authenticate(session, body)
     except service.InvalidCredentialsError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
-    return service.create_token(user)
+    return service.create_token_pair(user)
+
+
+@router.post("/refresh", response_model=schemas.TokenResponse)
+def refresh(
+    body: schemas.RefreshRequest,
+    session: Session = Depends(get_session),
+) -> schemas.TokenResponse:
+    try:
+        return service.refresh_tokens(session, body.refresh_token)
+    except service.InvalidRefreshTokenError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+@router.post("/logout", status_code=204)
+def logout(
+    body: Optional[schemas.RefreshRequest] = None,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+) -> None:
+    access = credentials.credentials if credentials else None
+    refresh = body.refresh_token if body else None
+    service.logout(access, refresh)
 
 
 @router.get("/verify", response_model=schemas.VerifyResponse)
 def verify(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     session: Session = Depends(get_session),
 ) -> schemas.VerifyResponse:
     token = credentials.credentials if credentials else None

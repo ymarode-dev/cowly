@@ -1,9 +1,13 @@
+from __future__ import annotations
+
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from app.cows import schemas, service
 from app.database import get_session
-from app.security.deps import get_current_user
+from app.security.deps import CurrentUser, get_current_user
 
 router = APIRouter(
     prefix="/api/v1/cows",
@@ -12,18 +16,22 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=list[schemas.CowResponse])
-def list_cows(session: Session = Depends(get_session)) -> list[schemas.CowResponse]:
-    return service.list_cows(session)
+@router.get("", response_model=List[schemas.CowResponse])
+def list_cows(
+    user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> list[schemas.CowResponse]:
+    return service.list_cows(session, user.farm_id)
 
 
 @router.post("", response_model=schemas.CowResponse, status_code=201)
 def create_cow(
     body: schemas.CowCreate,
+    user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> schemas.CowResponse:
     try:
-        return service.create_cow(session, body)
+        return service.create_cow(session, user.farm_id, body)
     except service.DuplicateEarTagError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
@@ -31,10 +39,11 @@ def create_cow(
 @router.get("/{cow_id}", response_model=schemas.CowResponse)
 def get_cow(
     cow_id: str,
+    user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> schemas.CowResponse:
     try:
-        return service.get_cow(session, cow_id)
+        return service.get_cow(session, user.farm_id, cow_id)
     except service.CowNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -43,17 +52,22 @@ def get_cow(
 def update_cow(
     cow_id: str,
     body: schemas.CowUpdate,
+    user: CurrentUser = Depends(get_current_user),
     session: Session = Depends(get_session),
 ) -> schemas.CowResponse:
     try:
-        return service.update_cow(session, cow_id, body)
+        return service.update_cow(session, user.farm_id, cow_id, body)
     except service.CowNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete("/{cow_id}", status_code=204)
-def delete_cow(cow_id: str, session: Session = Depends(get_session)) -> None:
+def delete_cow(
+    cow_id: str,
+    user: CurrentUser = Depends(get_current_user),
+    session: Session = Depends(get_session),
+) -> None:
     try:
-        service.delete_cow(session, cow_id)
+        service.delete_cow(session, user.farm_id, cow_id)
     except service.CowNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

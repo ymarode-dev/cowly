@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.middleware.auth import AuthMiddleware
-from app.routes import health, proxy
+from app.routes import health, proxy, version
 
 app = FastAPI(
     title="Cowly API Gateway",
@@ -13,7 +13,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -21,6 +21,7 @@ app.add_middleware(
 app.add_middleware(AuthMiddleware)
 
 app.include_router(health.router)
+app.include_router(version.router)
 app.include_router(proxy.router)
 
 
@@ -30,12 +31,14 @@ async def root() -> dict:
         "service": "api-gateway",
         "docs": "/docs",
         "health": "/health",
+        "version": "/version",
         "routes": {
             "auth": "/api/v1/auth",
             "herd": "/api/v1/herd",
             "collars": "/api/v1/collars",
             "telemetry": "/api/v1/telemetry",
             "alerts": "/api/v1/alerts",
+            "geofences": "/api/v1/geofences",
             "notifications": "/api/v1/notifications",
             "simulator": "/api/v1/simulator",
         },

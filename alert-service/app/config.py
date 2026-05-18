@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"
     internal_api_key: str = "cowly-internal-dev-key"
+    default_notification_recipient: str = "demo@cowly.local"
+    low_battery_threshold: float = 20.0
+    high_temperature_threshold: float = 39.5
+    inactivity_threshold: float = 10.0
 
 
 settings = Settings()
